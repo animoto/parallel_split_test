@@ -8,28 +8,41 @@ module ParallelSplitTest
   class CommandLine < RSpec::Core::CommandLine
     def initialize(args)
       @args = args
+
+      delete_next = false
+      @concurrency = nil
+      @args.delete_if do |arg|
+        if delete_next
+          @concurrency = arg.to_i
+          true
+        elsif arg == '--parallel-test'
+          delete_next = true
+          true
+        end
+      end
+
       super
     end
 
     def run(err, out)
-      processes = ParallelSplitTest.choose_number_of_processes
+      processes = ParallelSplitTest.choose_number_of_processes(@concurrency)
       out.puts "Running examples in #{processes} processes"
 
       results = Parallel.in_processes(processes) do |process_number|
         ParallelSplitTest.example_counter = 0
         ParallelSplitTest.process_number = process_number
         set_test_env_number(process_number)
-        modify_out_file_in_args(process_number) if out_file
+        #modify_out_file_in_args(process_number) if out_file
 
         out = OutputRecorder.new(out)
         setup_copied_from_rspec(err, out)
         [run_group_of_tests, out.recorded]
       end
 
-      combine_out_files if out_file
-
-      reprint_result_lines(out, results.map(&:last))
-      results.map(&:first).max # combine exit status
+      #combine_out_files if out_file
+      unless results.nil?
+        results.map(&:first).max # combine exit status
+      end
     end
 
     private
@@ -75,15 +88,19 @@ module ParallelSplitTest
     def run_group_of_tests
       example_count = @world.example_count / ParallelSplitTest.processes
 
-      @configuration.reporter.report(example_count, seed) do |reporter|
-        begin
-          @configuration.run_hook(:before, :suite)
-          groups = @world.example_groups.ordered
-          results = groups.map {|g| g.run(reporter)}
-          results.all? ? 0 : @configuration.failure_exit_code
-        ensure
-          @configuration.run_hook(:after, :suite)
+      if ParallelSplitTest.process_number < @world.example_count
+        @configuration.reporter.report(example_count, seed) do |reporter|
+          begin
+            @configuration.run_hook(:before, :suite)
+            groups = @world.example_groups.ordered
+            results = groups.map {|g| g.run(reporter)}
+            results.all? ? 0 : @configuration.failure_exit_code
+          ensure
+            @configuration.run_hook(:after, :suite)
+          end
         end
+      else
+        results = 0
       end
     end
 
