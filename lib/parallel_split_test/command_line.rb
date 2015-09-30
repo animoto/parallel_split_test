@@ -41,6 +41,7 @@ module ParallelSplitTest
 
       #combine_out_files if out_file
       unless results.nil?
+        reprint_result_lines(out, results.map(&:last))
         results.map(&:first).max # combine exit status
       end
     end
@@ -55,7 +56,7 @@ module ParallelSplitTest
     end
 
     def set_test_env_number(process_number)
-      ENV['TEST_ENV_NUMBER'] = (process_number == 0 ? '' : (process_number + 1).to_s)
+      ENV['TEST_ENV_NUMBER'] = process_number.to_s
     end
 
     def out_file
