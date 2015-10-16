@@ -39,11 +39,10 @@ module ParallelSplitTest
         [run_group_of_tests, out.recorded]
       end
 
-      #combine_out_files if out_file
-      unless results.nil?
-        reprint_result_lines(out, results.map(&:last))
-        results.map(&:first).max # combine exit status
-      end
+      #unless results.nil?
+      #  reprint_result_lines(out, results.map(&:last))
+      #  results.map(&:first).max # combine exit status
+      #end
     end
 
     private
